@@ -55,10 +55,16 @@ void minHeapify(PriorityQueue *pq, int idx){
 }
 
 void push(PriorityQueue *pq, int No, int dist){
-    int i = pq -> size;
+    //before inserting neew node, check the capacity. 
+    //If size == capacity, then capacity is doubled. 
+    //This can prevents insertion failures when the queue size reaches its maximum limit.
+    if(pq -> size == pq -> capacity){ 
+        pq -> capacity *= 2;
+        pq -> data = (Node*)realloc(pq -> data, pq -> capacity * sizeof(Node));
+    }
+    int i = pq -> size++;
     pq -> data[i].No = No;
     pq -> data[i].dist = dist;
-    pq -> size++;
     //minheap -> index of parent node = (index of child node - 1) / 2
     //so compare with parent need to find the data in index (i - 1) / 2 
     while(i > 0 && pq -> data[i].dist < pq -> data[(i - 1) / 2].dist){
@@ -169,8 +175,6 @@ int main(){
         }
         free(cut_num);
     }    
-    MPI_Barrier(MPI_COMM_WORLD);
- 
     int s;
     int e;
     MPI_Bcast(&sum, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -223,16 +227,11 @@ int main(){
     int displs;
     while(update){
         update = dijkstra(n, s, e, g, dist, e_count, rank);
-        MPI_Barrier(MPI_COMM_WORLD);
         MPI_Allreduce(MPI_IN_PLACE, &update, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-        MPI_Barrier(MPI_COMM_WORLD);
-        MPI_Allreduce(MPI_IN_PLACE, dist, n, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
-        MPI_Barrier(MPI_COMM_WORLD);
+        if(update) MPI_Allreduce(MPI_IN_PLACE, dist, n, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
     }
     free(g);
     free(e_count);
-    
-    MPI_Barrier(MPI_COMM_WORLD);
 
     for(int r = 0; r < size; r++){
         if(r == rank){
